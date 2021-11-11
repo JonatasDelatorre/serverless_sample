@@ -1,0 +1,18 @@
+Resources:
+  CostExplorer:
+    Type: AWS::S3::Bucket
+    Properties: 
+      VersioningConfiguration: 
+        Status: Enabled
+      BucketEncryption: 
+        ServerSideEncryptionConfiguration: 
+          - ServerSideEncryptionByDefault: 
+              SSEAlgorithm: AES256
+      BucketName: !Sub ${self:service}-${AWS::AccountId}-${self:custom.stage}
+
+  CostExplorerDatabase:
+    Type: AWS::Glue::Database
+    Properties: 
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: 
+        Name: yhub_cost_explorer_database_${self:custom.stage}
