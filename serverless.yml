@@ -1,0 +1,52 @@
+service: yhub-git-flow-test2
+
+variablesResolutionMode: 20210326
+
+# Declaração de variáveis customizadas
+custom: 
+  stage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, self:provider.region}
+  deployment_bucket: ${self:service}-deployment-${self:custom.stage}
+  pythonRequirements:
+    dockerizePip: non-linux
+  individually-for-dev: 
+    dev: False
+
+# Cabeçalho de configuração da stack
+provider:
+  name: aws
+  runtime: python3.8
+  stage: dev
+  region: us-east-1
+  stackName: ${self:service}-${self:custom.stage}
+  stackTags:
+    Owner: yhub
+  lambdaHashingVersion: "20201221"
+  deploymentBucket:
+    name: ${self:custom.deployment_bucket}
+    serverSideEncryption: AES256
+
+# Excluir pacotes para que o deploy do lambda não fique poluido
+package:
+  individually: true
+  patterns:
+    - '!venv/**'
+    - '!test/**'
+    - '!buildspec.yml'
+    - '!functions/**'
+    - '!README.md'
+    - '!node_modules/**'
+    - '!src/**'
+    - '!package.json'
+    - '!package-lock.json'
+    - '!resources/**'
+
+functions:
+  CostExplorer: ${file(functions/cost_explorer.yml)}
+
+resources: 
+  - ${file(resources/resources.yml)}
+
+plugins:
+  - serverless-iam-roles-per-function # Plugin de criação de role e policy para cada lambda
+  - serverless-deployment-bucket #Plugin para gerenciar criacao de bucket de deployment
