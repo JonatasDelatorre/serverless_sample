@@ -22,4 +22,4 @@ Resources:
     Properties: 
       CatalogId: !Ref AWS::AccountId
       DatabaseInput: 
-        Name: yhub_cost_explorer2_database_${self:custom.stage}
+        Name: yhub_cost_explorer_2_database_${self:custom.stage}
