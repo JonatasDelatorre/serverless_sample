@@ -1,4 +1,4 @@
-service: yhub-git-flow-prod
+service: yhub-git-flow
 
 variablesResolutionMode: 20210326
 

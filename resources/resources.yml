@@ -16,3 +16,10 @@ Resources:
       CatalogId: !Ref AWS::AccountId
       DatabaseInput: 
         Name: yhub_cost_explorer_database_${self:custom.stage}
+
+  CostExplorerDatabase2:
+    Type: AWS::Glue::Database
+    Properties: 
+      CatalogId: !Ref AWS::AccountId
+      DatabaseInput: 
+        Name: yhub_cost_explorer2_database_${self:custom.stage}
