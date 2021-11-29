@@ -15,5 +15,5 @@ phases:
   build:
     commands:
       - coverage run -m pytest test/conftest.py
-      - coverage report --fail-under=70
+      - coverage report --fail-under=60
       - serverless deploy --stage $STAGE --region $REGION
