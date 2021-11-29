@@ -1,4 +1,4 @@
-service: yhub-git-flow
+service: datalake-template
 
 variablesResolutionMode: 20210326
 
@@ -20,8 +20,7 @@ provider:
   region: us-east-1
   stackName: ${self:service}-${self:custom.stage}
   stackTags:
-    Owner: yhub
-  lambdaHashingVersion: "20201221"
+    Owner: JonatasDelatorre
   deploymentBucket:
     name: ${self:custom.deployment_bucket}
     serverSideEncryption: AES256
@@ -37,16 +36,20 @@ package:
     - '!README.md'
     - '!node_modules/**'
     - '!src/**'
-    - '!package.json'
-    - '!package-lock.json'
-    - '!resources/**'
 
+# Referência para cada arquivos de configurações das funções lambda
 functions:
-  CostExplorer: ${file(functions/cost_explorer.yml)}
+  Extract: ${file(functions/extract.yml)}
+  Process: ${file(functions/process.yml)}
 
+# Arquivo com recursos criados utilizando cloudformation
 resources: 
-  - ${file(resources/resources.yml)}
+  Resources: ${file(resources.yml)}
+
+stepFunctions: ${file(step_functions.yml)}
 
 plugins:
   - serverless-iam-roles-per-function # Plugin de criação de role e policy para cada lambda
+  - serverless-python-requirements #Plugin para automatizar a inclusao dos pacotes presentes no requirements
   - serverless-deployment-bucket #Plugin para gerenciar criacao de bucket de deployment
+  - serverless-step-functions #Plugin para configurar stepfunction com yml no serverless

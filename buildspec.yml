@@ -1,0 +1,19 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_XRAY_CONTEXT_MISSING: LOG_ERROR
+phases:
+  install:
+    runtime-versions:
+      nodejs: 12
+      python: 3.8
+    commands:
+      - cd datalake_sample/
+      - npm install
+      - npm_config_user=root npm install -g serverless
+  build:
+    commands:
+      - coverage run -m pytest test/conftest.py
+      - coverage report --fail-under=70
+      - serverless deploy --stage $STAGE --region $REGION
