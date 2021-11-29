@@ -9,9 +9,9 @@ phases:
       nodejs: 12
       python: 3.8
     commands:
-      - cd datalake_sample/
       - npm install
       - npm_config_user=root npm install -g serverless
+      - pip install -r requirements.txt
   build:
     commands:
       - coverage run -m pytest test/conftest.py
