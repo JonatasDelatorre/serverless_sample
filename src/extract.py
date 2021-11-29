@@ -31,7 +31,7 @@ def handler(event, context):
     try:
         logger.info(event)
 
-        # ENVIRONMENT VARIABLES test precommit
+        # ENVIRONMENT VARIABLES
         DATALAKE_BUCKET = os.environ["DATALAKE_BUCKET"]
         
         # Get object key from event message

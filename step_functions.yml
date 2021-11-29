@@ -1,0 +1,35 @@
+validate: true
+stateMachines:
+  fornecedor:
+    name: ${self:service}-etl-state-machine-${self:custom.stage}
+    events:
+      - eventBridge:
+          name: ${self:service}-etl-call-${self:custom.stage}
+          event:
+            source:
+              - "aws.s3"
+            detail-type:
+              - "AWS API Call via CloudTrail"
+            detail:
+              eventSource:
+                - "s3.amazonaws.com"
+              eventName:
+                - "PutObject"
+                - "CompleteMultipartUpload"
+              requestParameters:
+                bucketName:
+                  - !Ref DatalakeBucket
+                key:
+                  - prefix:
+                      "raw/"
+    definition:
+      Comment: "StepFunction para ETL de exemplo"
+      StartAt: process
+      States:
+        process:
+          Type: Task
+          InputPath: $
+          ResultPath: $.result_1
+          Resource: !GetAtt ProcessLambdaFunction.Arn
+          TimeoutSeconds: 300
+          End: true

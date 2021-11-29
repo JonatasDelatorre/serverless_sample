@@ -1,0 +1,13 @@
+{
+    "name": "datalake-template-serverless",
+    "description": "",
+    "version": "0.1.0",
+    "dependencies": {
+      "serverless-deployment-bucket": "^1.5.1",
+      "serverless-iam-roles-per-function": "^3.2.0",
+      "serverless-python-requirements": "^5.1.1",
+      "serverless-step-functions": "^3.1.1"
+    },
+    "devDependencies": {}
+  }
+  

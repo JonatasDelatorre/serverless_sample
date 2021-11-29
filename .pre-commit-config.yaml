@@ -1,0 +1,24 @@
+repos:
+-   repo: local
+    hooks:    
+    -   id: custom-pytest
+        name: custom-pytest
+        entry: test/pre-commit.sh
+        language: system
+        types: [python]
+        pass_filenames: false
+# repos:
+# -   repo: local
+#     hooks:    
+#     -   id: custom-pytest
+#         name: custom-pytest
+#         entry: 'coverage run -m pytest test/conftest.py'
+#         language: system
+#         types: [python]
+#         pass_filenames: false
+# -   repo: https://github.com/pre-commit/pre-commit-hooks
+#     rev: v3.2.0
+#     hooks:
+#     -   id: trailing-whitespace
+#     -   id: end-of-file-fixer
+          

@@ -1,0 +1,98 @@
+  DatalakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      NotificationConfiguration:
+          TopicConfigurations:
+            - Event: s3:ObjectCreated:*
+              Topic: !Ref SourceRawTopic
+      BucketName: !Sub ${self:service}-datalake-${AWS::AccountId}-${self:custom.stage}
+
+  SourceRawTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !GetAtt SourceRawQueue.Arn
+          Protocol: "sqs"
+
+  SourceRawTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      Topics:
+        - !Ref SourceRawTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: "*"
+
+  SourceRawQueue:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: ${self:service}-source-raw-queue-${self:custom.stage}
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SourceRawDLQ.Arn
+        maxReceiveCount: 5
+
+  SourceRawDLQ:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: ${self:service}-source-raw-dlq-${self:custom.stage}
+      MessageRetentionPeriod: 345600
+
+  SourceRawQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SourceRawQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: "*"
+
+  # DatalakeDatabase:
+  #   Type: AWS::Glue::Database
+  #   Properties:
+  #     CatalogId: !Ref AWS::AccountId
+  #     DatabaseInput:
+  #       Name: ${self:service}-database-name-${self:custom.stage}
+
+  # ProcessedTable:
+  #   Type: AWS::Glue::Table
+  #   Properties:
+  #     CatalogId: !Ref AWS::AccountId
+  #     DatabaseName: !Ref DatalakeDatabase
+  #     TableInput:
+  #       Name: ${self:service}-processed-${self:custom.stage}
+  #       TableType: EXTERNAL_TABLE
+  #       Parameters: { "classification": "parquet" }
+  #       PartitionKeys:
+  #         - Name: ano
+  #           Type: string
+  #       StorageDescriptor:
+  #         Location: !Sub ${self:custom.datalake_bucket_prefix}-${AWS::AccountId}-${self:custom.stage}/staging/Sellout/
+  #         InputFormat: "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+  #         OutputFormat: "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+  #         SerdeInfo:
+  #           Parameters: { "serialization.format" : 1 }
+  #           SerializationLibrary: "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+  #         StoredAsSubDirectories: false
+  #         Columns:
+  #           - Name: nome
+  #             Type: string
+  #           - Name: sobrenome
+  #             Type: string

@@ -1,0 +1,22 @@
+handler: src/process.handler
+description: Templete de exemplo para trasformação de dados
+memorySize: 256
+timeout: 120
+environment:
+  DATALAKE_BUCKET: !Ref DatalakeBucket
+package: 
+  include: 
+    - src/process.py
+layers:
+  - !Sub arn:aws:lambda:${self:custom.region}:${AWS::AccountId}:layer:aws-wrangler:1
+iamRoleStatementsName: ${self:service}-process-lambda-${self:custom.stage}
+iamRoleStatements:
+  - Effect: "Allow"
+    Action:
+      - "s3:PutObject"
+      - "s3:GetObject"
+      - "s3:GetObjectVersion"
+      - "s3:ListBucket"
+    Resource: 
+      - !GetAtt DatalakeBucket.Arn
+      - !Join [ "", [ !GetAtt DatalakeBucket.Arn, "/*"] ]
