@@ -31,7 +31,6 @@ def moto_s3():
 def test_raw_read_csv(moto_s3):
     path = "s3://bucket/source/source_csv.csv"
     df = extract.read_csv_from_s3(path, moto_s3)
-    print(df)
     assert len(df.index) == 3
     assert len(df.columns) == 2
 
@@ -56,7 +55,6 @@ def test_processed_write_parquet(moto_s3):
 
     data = processed_dataframe
     df = pd.DataFrame(data)  
-    print(df)
 
     result = process.write_parquet_on_s3(df, path, moto_s3)
     assert result
