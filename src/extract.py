@@ -31,7 +31,7 @@ def handler(event, context):
     try:
         logger.info(event)
 
-        # ENVIRONMENT VARIABLES
+        # ENVIRONMENT VARIABLESasdasd
         DATALAKE_BUCKET = os.environ["DATALAKE_BUCKET"]
         
         # Get object key from event message
