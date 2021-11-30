@@ -44,8 +44,7 @@ functions:
   Process: ${file(functions/process.yml)}
 
 # Arquivo com recursos criados utilizando cloudformation
-resources: 
-  Resources: ${file(resources/resources.yml)}
+resources: ${file(resources/resources.yml)}
 
 stepFunctions: ${file(step_functions.yml)}
 
