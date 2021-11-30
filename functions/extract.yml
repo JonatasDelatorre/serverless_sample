@@ -12,7 +12,7 @@ package:
   include:
     - src/extract.py
 layers:
-  - !Sub arn:aws:lambda:${self:custom.region}:${AWS::AccountId}:layer:aws-wrangler:1
+  - !Sub arn:aws:lambda:${self:custom.region}:${AWS::AccountId}:layer:aws-wrangler:2
 iamRoleStatementsName: ${self:service}-extract-lambda-${self:custom.stage}
 iamRoleStatements:
   - Effect: "Allow"

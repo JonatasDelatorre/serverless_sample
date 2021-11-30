@@ -1,138 +1,238 @@
 Resources:
 
-  OracleDeletionRepo:
-    Type: AWS::ECR::Repository
+  DatalakeBucket:
+    Type: AWS::S3::Bucket
     Properties:
-      ImageTagMutability: "MUTABLE"
-      RepositoryName: !Sub client-oracle-deletion-repository-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      NotificationConfiguration:
+          TopicConfigurations:
+            - Event: s3:ObjectCreated:*
+              Topic: !Ref SourceRawTopic
+      BucketName: !Sub ${self:service}-datalake-${AWS::AccountId}-${self:custom.stage}
 
-  OracleDeletionECSCluster:
-    Type: AWS::ECS::Cluster
+  SourceRawTopic:
+    Type: AWS::SNS::Topic
     Properties:
-      CapacityProviders:
-        - "FARGATE"
-      ClusterName: !Sub client-oracle-deletion-cluster-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
-      ClusterSettings:
-        - Name: containerInsights
-          Value: disabled
-      DefaultCapacityProviderStrategy:
-        - CapacityProvider: "FARGATE"
-          Weight: 1
+      Subscription:
+        - Endpoint: !GetAtt SourceRawQueue.Arn
+          Protocol: "sqs"
 
-  OracleDeletionTask:
-    Type: AWS::ECS::TaskDefinition
+  SourceRawTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
     Properties:
-      RequiresCompatibilities:
-        - FARGATE
-      ContainerDefinitions:
-        - Name: !Sub client-oracle-deletion-container-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
-          Image: !Sub '#{AWS::AccountId}.dkr.ecr.${self:custom.region}.amazonaws.com/#{OracleDeletionRepo}:latest'
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-region: ${self:custom.region}
-              awslogs-group: !Ref OracleDeletionFargateLogGroup
-              awslogs-stream-prefix: oracle-deletion
-          PortMappings:
-            - ContainerPort: 8080
-              HostPort: 8080
-              Protocol: tcp
-          Environment: 
-            - Name: REGION
-              Value: ${self:custom.region}
-            - Name: ACCOUNT
-              Value: !Ref AWS::AccountId
-            - Name: STAGE
-              Value: ${self:custom.stage}
-            - Name: CORE_SECRET
-              Value: ${self:custom.DBSecManSec}
-            - Name: CONFIG_BUCKET
-              Value: ${self:custom.ConfigBucketUS}
-            - Name: LD_LIBRARY_PATH
-              Value: 'src/oracle_libs'
-      # Essential: false 
-      Cpu: "256"
-      Memory: "512"
-      NetworkMode: awsvpc
-      TaskRoleArn: !Ref OracleDeletionFargateTaskRole
-      ExecutionRoleArn: !Ref OracleDeletionFargateExecutionRole
-      
-  OracleDeletionFargateLogGroup:
-    Type: AWS::Logs::LogGroup
-    Properties:
-      LogGroupName: /ecs/oracle-deletion
-
-  OracleDeletionFargateExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: OracleDeletionFargateExecutionRole
-      AssumeRolePolicyDocument:
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service:
-                - ecs.amazonaws.com
-                - ecs-tasks.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
-      Policies:
-        - PolicyName: OracleDeletionECSMetricsPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: 
-                  - ecs:StartTelemetrySession
-                Resource: "*"
-
-  OracleDeletionFargateTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
+      Topics:
+        - !Ref SourceRawTopic
+      PolicyDocument:
         Version: '2012-10-17'
         Statement:
           - Effect: Allow
             Principal:
-              Service:
-                - ecs.amazonaws.com # redundant?
-                - ecs-tasks.amazonaws.com
-            Action:
-              - 'sts:AssumeRole'
-      Policies:
-        - PolicyName: OracleDeletionFargatePolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action: 
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:DescribeLogStreams
-                  - logs:PutLogEvents
-                  - ecs:StartTelemetrySession
-                Resource: "*"
-              - Effect: Allow
-                Action: 
-                  - s3:GetObject
-                  - s3:ListBucket
-                Resource: 
-                  - !Sub arn:aws:s3:::${self:custom.ConfigBucketUS}/*
-                  - !Sub arn:aws:s3:::${self:custom.ConfigBucketUS}
-              - Effect: Allow
-                Action: 
-                  - secretsmanager:GetSecretValue
-                Resource:
-                  - "*"
-                  
-  OracleDeletionFargateSecGroup:
-    Type: AWS::EC2::SecurityGroup
+              Service: s3.amazonaws.com
+            Action: sns:Publish
+            Resource: "*"
+
+  SourceRawQueue:
+    Type: "AWS::SQS::Queue"
     Properties:
-      GroupName: fargate-sg-for-oracle-deletion
-      GroupDescription: Allow traffic from RDS Oracle
-      VpcId: ${self:custom.VPCID}
-      SecurityGroupEgress:
-        - CidrIp: 0.0.0.0/0
-          FromPort: 0
-          IpProtocol: -1
-          ToPort: 0
+      QueueName: ${self:service}-source-raw-queue-${self:custom.stage}
+      MessageRetentionPeriod: 345600
+      VisibilityTimeout: 300
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt SourceRawDLQ.Arn
+        maxReceiveCount: 5
+
+  SourceRawDLQ:
+    Type: "AWS::SQS::Queue"
+    Properties:
+      QueueName: ${self:service}-source-raw-dlq-${self:custom.stage}
+      MessageRetentionPeriod: 345600
+
+  SourceRawQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      Queues:
+        - !Ref SourceRawQueue
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: sns.amazonaws.com
+            Action: sqs:SendMessage
+            Resource: "*"
+
+  # DatalakeDatabase:
+  #   Type: AWS::Glue::Database
+  #   Properties:
+  #     CatalogId: !Ref AWS::AccountId
+  #     DatabaseInput:
+  #       Name: ${self:service}-database-name-${self:custom.stage}
+
+  # ProcessedTable:
+  #   Type: AWS::Glue::Table
+  #   Properties:
+  #     CatalogId: !Ref AWS::AccountId
+  #     DatabaseName: !Ref DatalakeDatabase
+  #     TableInput:
+  #       Name: ${self:service}-processed-${self:custom.stage}
+  #       TableType: EXTERNAL_TABLE
+  #       Parameters: { "classification": "parquet" }
+  #       PartitionKeys:
+  #         - Name: ano
+  #           Type: string
+  #       StorageDescriptor:
+  #         Location: !Sub ${self:custom.datalake_bucket_prefix}-${AWS::AccountId}-${self:custom.stage}/staging/Sellout/
+  #         InputFormat: "org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat"
+  #         OutputFormat: "org.apache.hadoop.hive.ql.io.parquet.MapredParquetOutputFormat"
+  #         SerdeInfo:
+  #           Parameters: { "serialization.format" : 1 }
+  #           SerializationLibrary: "org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe"
+  #         StoredAsSubDirectories: false
+  #         Columns:
+  #           - Name: nome
+  #             Type: string
+  #           - Name: sobrenome
+  #             Type: string
+
+
+  # OracleDeletionRepo:
+  #   Type: AWS::ECR::Repository
+  #   Properties:
+  #     ImageTagMutability: "MUTABLE"
+  #     RepositoryName: !Sub client-oracle-deletion-repository-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
+
+  # OracleDeletionECSCluster:
+  #   Type: AWS::ECS::Cluster
+  #   Properties:
+  #     CapacityProviders:
+  #       - "FARGATE"
+  #     ClusterName: !Sub client-oracle-deletion-cluster-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
+  #     ClusterSettings:
+  #       - Name: containerInsights
+  #         Value: disabled
+  #     DefaultCapacityProviderStrategy:
+  #       - CapacityProvider: "FARGATE"
+  #         Weight: 1
+
+  # OracleDeletionTask:
+  #   Type: AWS::ECS::TaskDefinition
+  #   Properties:
+  #     RequiresCompatibilities:
+  #       - FARGATE
+  #     ContainerDefinitions:
+  #       - Name: !Sub client-oracle-deletion-container-${self:custom.stage}-${AWS::AccountId}-${self:custom.region}
+  #         Image: !Sub '#{AWS::AccountId}.dkr.ecr.${self:custom.region}.amazonaws.com/#{OracleDeletionRepo}:latest'
+  #         LogConfiguration:
+  #           LogDriver: awslogs
+  #           Options:
+  #             awslogs-region: ${self:custom.region}
+  #             awslogs-group: !Ref OracleDeletionFargateLogGroup
+  #             awslogs-stream-prefix: oracle-deletion
+  #         PortMappings:
+  #           - ContainerPort: 8080
+  #             HostPort: 8080
+  #             Protocol: tcp
+  #         Environment: 
+  #           - Name: REGION
+  #             Value: ${self:custom.region}
+  #           - Name: ACCOUNT
+  #             Value: !Ref AWS::AccountId
+  #           - Name: STAGE
+  #             Value: ${self:custom.stage}
+  #           - Name: CORE_SECRET
+  #             Value: ${self:custom.DBSecManSec}
+  #           - Name: CONFIG_BUCKET
+  #             Value: ${self:custom.ConfigBucketUS}
+  #           - Name: LD_LIBRARY_PATH
+  #             Value: 'src/oracle_libs'
+  #     # Essential: false 
+  #     Cpu: "256"
+  #     Memory: "512"
+  #     NetworkMode: awsvpc
+  #     TaskRoleArn: !Ref OracleDeletionFargateTaskRole
+  #     ExecutionRoleArn: !Ref OracleDeletionFargateExecutionRole
+      
+  # OracleDeletionFargateLogGroup:
+  #   Type: AWS::Logs::LogGroup
+  #   Properties:
+  #     LogGroupName: /ecs/oracle-deletion
+
+  # OracleDeletionFargateExecutionRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     RoleName: OracleDeletionFargateExecutionRole
+  #     AssumeRolePolicyDocument:
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - ecs.amazonaws.com
+  #               - ecs-tasks.amazonaws.com
+  #           Action: 'sts:AssumeRole'
+  #     ManagedPolicyArns:
+  #       - 'arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy'
+  #     Policies:
+  #       - PolicyName: OracleDeletionECSMetricsPolicy
+  #         PolicyDocument:
+  #           Version: '2012-10-17'
+  #           Statement:
+  #             - Effect: Allow
+  #               Action: 
+  #                 - ecs:StartTelemetrySession
+  #               Resource: "*"
+
+  # OracleDeletionFargateTaskRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #       Version: '2012-10-17'
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service:
+  #               - ecs.amazonaws.com # redundant?
+  #               - ecs-tasks.amazonaws.com
+  #           Action:
+  #             - 'sts:AssumeRole'
+  #     Policies:
+  #       - PolicyName: OracleDeletionFargatePolicy
+  #         PolicyDocument:
+  #           Version: '2012-10-17'
+  #           Statement:
+  #             - Effect: Allow
+  #               Action: 
+  #                 - logs:CreateLogGroup
+  #                 - logs:CreateLogStream
+  #                 - logs:DescribeLogStreams
+  #                 - logs:PutLogEvents
+  #                 - ecs:StartTelemetrySession
+  #               Resource: "*"
+  #             - Effect: Allow
+  #               Action: 
+  #                 - s3:GetObject
+  #                 - s3:ListBucket
+  #               Resource: 
+  #                 - !Sub arn:aws:s3:::${self:custom.ConfigBucketUS}/*
+  #                 - !Sub arn:aws:s3:::${self:custom.ConfigBucketUS}
+  #             - Effect: Allow
+  #               Action: 
+  #                 - secretsmanager:GetSecretValue
+  #               Resource:
+  #                 - "*"
+                  
+  # OracleDeletionFargateSecGroup:
+  #   Type: AWS::EC2::SecurityGroup
+  #   Properties:
+  #     GroupName: fargate-sg-for-oracle-deletion
+  #     GroupDescription: Allow traffic from RDS Oracle
+  #     VpcId: ${self:custom.VPCID}
+  #     SecurityGroupEgress:
+  #       - CidrIp: 0.0.0.0/0
+  #         FromPort: 0
+  #         IpProtocol: -1
+  #         ToPort: 0
