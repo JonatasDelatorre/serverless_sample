@@ -1,5 +1,4 @@
 import json
-import boto3
 import os
 import logging
 import awswrangler as wr
@@ -12,11 +11,11 @@ def get_sns_message(event):
     source_key = json.loads(message)['Records'][0]['s3']['object']['key']
     return source_key
 
-def read_csv_from_s3(source_path, moto_s3=None):
+def read_csv_from_s3(source_path):
     df = wr.s3.read_csv(path=source_path)
     return df
 
-def write_parquet_on_s3(df, raw_path,  moto_s3=None):
+def write_parquet_on_s3(df, raw_path):
     result = wr.s3.to_parquet(
         df=df,
         path=raw_path,

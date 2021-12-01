@@ -1,6 +1,4 @@
 import os
-import json
-import boto3
 import awswrangler as wr
 import logging
 
@@ -10,7 +8,7 @@ logger.setLevel(logging.INFO)
 def get_stepfunctions_message(event):
     return event['detail']['requestParameters']['key']
 
-def read_parquet_from_s3(raw_path, moto_s3=None):
+def read_parquet_from_s3(raw_path):
     df = wr.s3.read_parquet(path=raw_path)
     return df
 
@@ -22,7 +20,7 @@ def df_processes(df):
     print(df)
     return df
 
-def write_parquet_on_s3(df, processed_path,  moto_s3=None):
+def write_parquet_on_s3(df, processed_path):
     result = wr.s3.to_parquet(
         df=df,
         path=processed_path,

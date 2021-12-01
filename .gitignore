@@ -11,6 +11,9 @@ venv/**
 # Compiled Java class files
 *.class
 
+*.pytest_cache/*
+.pytest_cache/
+
 .coverage
 test/__pycache__/**
 test/.pytest_cache/**

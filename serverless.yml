@@ -1,4 +1,4 @@
-service: datalake-template
+service: datalake-unittest
 
 variablesResolutionMode: 20210326
 
@@ -31,12 +31,20 @@ package:
   individually: true
   patterns:
     - '!venv/**'
-    - '!test/**'
-    - '!buildspec.yml'
     - '!functions/**'
-    - '!README.md'
     - '!node_modules/**'
     - '!src/**'
+    - '!test/**'
+    - '!.coverage'
+    - '!.coveragerc'
+    - '!.gitignore'
+    - '!.pre-commit-config.yaml'
+    - '!buildspec.yml'
+    - '!package.json'
+    - '!README.md'
+    - '!resources/'
+    - '!resources'
+    - '!step_functions.yml'
 
 # Referência para cada arquivos de configurações das funções lambda
 functions:

@@ -1,3 +1,3 @@
 #!/bin/sh
-coverage run -m pytest test/conftest.py
+coverage run --include=src/extract.py,src/process.py -m pytest test/etl_test.py
 coverage report --fail-under=60

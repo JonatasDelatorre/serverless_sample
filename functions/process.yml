@@ -5,7 +5,7 @@ timeout: 120
 environment:
   DATALAKE_BUCKET: !Ref DatalakeBucket
 package: 
-  include: 
+  patterns: 
     - src/process.py
 layers:
   - !Sub arn:aws:lambda:${self:custom.region}:${AWS::AccountId}:layer:aws-wrangler:2
