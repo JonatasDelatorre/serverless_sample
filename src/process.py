@@ -30,34 +30,22 @@ def write_parquet_on_s3(df, processed_path):
     )
     return result
 
-
 def handler(event, context):
     try:
         logger.info(event)
-
         # ENVIRONMENT VARIABLES
         DATALAKE_BUCKET = os.environ["DATALAKE_BUCKET"]
-
         # Key dos objetos
         raw_key = get_stepfunctions_message(event)
         processed_key = 'processed'
-
         # Paths de leitura e escrita
         raw_path = 's3://{}/{}'.format(DATALAKE_BUCKET, raw_key)
         processed_path = 's3://{}/{}/'.format(DATALAKE_BUCKET, processed_key)
-
         # Leitura do arquivo do s3 RAW a partir do evento recebido do SQS
         df = read_parquet_from_s3(raw_path)
-
         df = df_processes(df)
-
         result = write_parquet_on_s3(df, processed_path)
-
-        ##########################
-        #
-        # Atualiza as partições na tabela do glue
-        #
-        #########################
-
     except Exception as e:
         logger.error(e)
+
+

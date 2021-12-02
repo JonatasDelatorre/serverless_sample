@@ -13,6 +13,9 @@ venv/**
 
 *.pytest_cache/*
 .pytest_cache/
+src/__pycache__/
+test/__pycache__/
+test/samples/__pycache__/
 
 .coverage
 test/__pycache__/**

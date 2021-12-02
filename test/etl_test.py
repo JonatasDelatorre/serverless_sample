@@ -5,7 +5,6 @@ import boto3
 import ast
 
 sys.path.append(os.path.abspath(''))
-# sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 
@@ -16,7 +15,6 @@ from src import extract
 from src import process
 from samples.data_samples import raw_dataframe
 from samples.data_samples import processed_dataframe
-
 
 @mock_s3
 class TestExtractFile(unittest.TestCase):    
@@ -33,6 +31,16 @@ class TestExtractFile(unittest.TestCase):
     def setUp(self):
         self.bucket_name = TestExtractFile.bucket_name
 
+    def test_lambda_sqs_message_input(self):
+        
+        with open('test/samples/source_sqs_message.txt') as f:
+            contents = f.read()
+            event = ast.literal_eval(contents)
+
+        result = extract.get_sns_message(event)
+
+        self.assertTrue(result)  
+
     def test_raw_read_csv(self):
         path = "s3://{}/source/source_csv.csv".format(self.bucket_name)
         df = extract.read_csv_from_s3(path)
@@ -48,15 +56,6 @@ class TestExtractFile(unittest.TestCase):
         result = extract.write_parquet_on_s3(df, path)
         self.assertTrue(result)  
 
-    def test_lambda_sqs_message_input(self):
-        
-        with open('test/samples/source_sqs_message.txt') as f:
-            contents = f.read()
-            event = ast.literal_eval(contents)
-
-        result = extract.get_sns_message(event)
-
-        self.assertTrue(result)  
 
     # def test_2_bucket_still_exists(self):
     #     client = boto3.client("s3")
